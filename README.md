@@ -1,7 +1,7 @@
 # CyMorph
 ### Non-parametric Galaxy Morphology Package
 
-Adapted and improved from original CyMorph:
+Adapted and adjusted from original CyMorph:
 https://github.com/rsautter/CyMorph
 
 ## Requirements
