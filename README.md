@@ -12,6 +12,10 @@ https://github.com/rsautter/CyMorph
  - SciPy
  - Cython
 
+## Before Compiling - Create directories and download sExtractor
+
+    bash preCompile.sh
+
 ## Compiling
 
     python compile.py build_ext --inplace
