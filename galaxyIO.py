@@ -10,30 +10,6 @@ def plotFITS(mat,fileName):
     hdu = fits.PrimaryHDU(mat)
     hdu.writeto(fileName, clobber=True)
 
-
-#def plotGradient(org, dx, dy, fileName, ylabel, yrange, title, inverseDensity = 7):
-#    plt.clf()
-#    ddx = numpy.array(dy)
-#    ddy = -1.0*numpy.array(dx)
-#    plt.figure(figsize=(16, 8))
-#    skip=(slice(None,None,inverseDensity),slice(None,None,inverseDensity))
-#    mods = [ math.pow(math.pow(ddx.ravel()[i],2.0)+math.pow(ddy.ravel()[i],2.0),0.5) for i in range(len(ddx.ravel()))]
-    #speed = numpy.arctan2(ddy, ddx)
-#    ddx = -1.0*ddx/max(mods)
-#    ddy = -1.0*ddy/max(mods)
-#    gy = numpy.array([[i for i in range(len(ddx[j]))] for j in range(len(ddx))])
-#    gx = numpy.array([[j for i in range(len(ddx[j]))] for j in range(len(ddx))])
-#    plt.quiver(gy[skip], gx[skip],-1.0*ddx[skip],-1.0*ddy[skip], color='0.3')
-#    plt.contour(gy,gx, org, linewidths=2)
-#    plt.xlabel(r'$\theta$')
-#    plt.ylabel(ylabel)
-#    n = (len(gx[0])-1.0)
-#    plt.xticks([0.0, n/4.0, n/2.0, 3.0*n/4.0, n],['$0$', r'$\frac{\pi}{2}$', r'$\pi$', r'$\frac{3\pi}{2}$', r'$2\pi$'])
-#    plt.yticks([(len(gx))*float(i)/len(yrange) for i in range(len(yrange))],yrange)
-#    plt.title(title, fontsize=10)
-#    plt.tight_layout()
-#    plt.savefig(fileName)
-
 def saveCSV(pts,fileName):
     
     numpy.savetxt(fileName,numpy.array(pts).T)
@@ -81,21 +57,6 @@ def saveConcentrationDev(dists, conc, nsample, foldSize=15):
 
 def readFITSIMG(string):
     return numpy.array(fits.open(string)[0].data, numpy.float32)
-
-#def runAdaptSmooth(mat, xtraID,sky):
-#    mat2 = gio.removeSky(mat,sky)
-#    plotFITS(mat2,"adaptsmooth/"+str(xtraID)+".fits")
-#    localPath = os.getcwd()
-#    newPath = os.getcwd()+"/adaptsmooth"
-#    os.chdir(newPath)  
-#    cmd = "./adaptsmooth.exe -p -r 2.4 -G 5.2 -s 10.0 -L 10 "+str(xtraID)+".fits smoothed"+str(xtraID)+".fits maskSize"+str(xtraID)+".fits"
-#    pr = os.popen(cmd)
-#    pr.read()
-#    mat2=readFITSIMG("smoothed"+str(xtraID)+".fits")
-#    pr = os.popen("rm *"+str(xtraID)+".fits")
-#    pr.read()
-#    os.chdir(localPath)
-#    return mat2
 
 def runSextractor(filePath, filename,xtraID,par=[],value=[]):
     configFile = ConfigParser.ConfigParser()

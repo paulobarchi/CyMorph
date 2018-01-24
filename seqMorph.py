@@ -82,4 +82,4 @@ for file in os.listdir(path):
 			pr.read()
 
 		print(" " + objId + " done.")
-i = i + 1
+		i = i + 1

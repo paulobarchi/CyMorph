@@ -9,6 +9,7 @@ import sys
 import math
 
 from scipy import fftpack
+from scipy.ndimage.filters import gaussian_filter
 
 from libc.math cimport fabs, atan2, floor, sqrt, pow,cos, sin, exp
 from libc.stdlib cimport rand, RAND_MAX
@@ -301,6 +302,13 @@ cpdef float butterworth(float d,float d0,float n):
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.cdivision(True)
+def gaussianFilter(float[:,:] mat, float Rp):
+    return gaussian_filter(mat, sigma=(1/5) * 1.5 * Rp)
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
 def filterButterworth2D2(float[:,:] img, float degradation, float n):
     # frac -> max smoothing at center
     cdef:
@@ -504,11 +512,32 @@ cpdef float F(float r, float[:,:] mat, float bcg, object ellipse):
 @cython.boundscheck(False)
 @cython.wraparound(False)   
 @cython.cdivision(True)         # with mask
+cpdef float getSkyMedian(float[:,:] mat):
+    cdef: 
+        int w, h, i, j
+
+    w, h = len(mat[0]), len(mat)
+
+    bcg_array = []
+    for i in range(int(w/5)):
+        for j in range (int(h/5)):
+            # print("appending "+str(mat[i, j]))
+            bcg_array.append(mat[i, j])
+            bcg_array.append(mat[(w/5)*4 + i, j])
+            bcg_array.append(mat[i, (h/5)*4 + j])
+            bcg_array.append(mat[(w/5)*4 + i, (h/5)*4 + j])
+
+    return numpy.median(bcg_array)
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)   
+@cython.cdivision(True)         # with mask
 cpdef tuple etaFunction(float[:,:] mat, object ellipse, int nsamples=50, int mindist = 0):
     cdef: 
         float[:] dists, acc, eta
         int ndists, w, h, i, j
-        float bcgMean
+        float bcgMedian
     
     if(nsamples<=0):
         raise Exception("Invalid number of samples!(Accumulated Lum). Got"+str(nsamples))
@@ -520,33 +549,16 @@ cpdef tuple etaFunction(float[:,:] mat, object ellipse, int nsamples=50, int min
     acc = numpy.array([0.0 for i in range(ndists)],dtype=numpy.float32)     # luminosidade acumulada
     eta = numpy.array([0.0 for i in range(ndists)],dtype=numpy.float32)     # eta para cada r
 
-    # bcg = getSkyMedian()
-    bcg_array = [] 
-    for i in range(int(w/5)):
-        for j in range (int(h/5)):
-            # print("appending "+str(mat[i, j]))
-            bcg_array.append(mat[i, j])
-            bcg_array.append(mat[(w/5)*4 + i, j])
-            bcg_array.append(mat[i, (h/5)*4 + j])
-            bcg_array.append(mat[(w/5)*4 + i, (h/5)*4 + j])
-
-    # print("matrix dimensions: " + str(w) + " x " + str(h) + " = " + str(w*h))
-    # print("len(bcg_array) = " + str(len(bcg_array)))
-    # for x in range(len(bcg_array)):
-    #     print(bcg_array[i])
-
-    bcgMean = numpy.median(bcg_array)
-    # bcgMean = bcgMean - 0.1
-    # print("bcgMean = "+str(bcgMean))
+    bcgMedian = getSkyMedian(mat)
 
     for i in range(1,len(mat)/2):
         dists[i-mindist] = float(i)
         # F(r)
-        acc[i-mindist] = F(i-mindist, mat, bcgMean, ellipse)
+        acc[i-mindist] = F(i-mindist, mat, bcgMedian, ellipse)
         # F(1.25*r)
-        eta[i-mindist] = F(1.25*(i-mindist), mat, bcgMean, ellipse)
+        eta[i-mindist] = F(1.25*(i-mindist), mat, bcgMedian, ellipse)
         # F(1.25*r)-F(0.8*r)
-        eta[i-mindist] = eta[i-mindist] - F(0.8*(i-mindist), mat, bcgMean, ellipse)
+        eta[i-mindist] = eta[i-mindist] - F(0.8*(i-mindist), mat, bcgMedian, ellipse)
         # divisao no numerador = 
         #(F(1.25*r)-F(0.8*r)) / pi*(1.25^2-0.8^2)*r^2
         eta[i-mindist] = eta[i-mindist]/(pi()*(pow(1.25,2.0)-pow(0.8,2.0))*pow(i-mindist,2.0))
@@ -632,7 +644,11 @@ cpdef tuple filterSegmentedMask(float[:,:] mask, ellipse):
     while(len(pts) > 0):
         point = numpy.array(pts.pop(0), dtype=numpy.int32)
         #print(point,mask[point],output[point])
-        if(mask[point[0],point[1]] == galID) & (output[point[0],point[1]] == 1.0):
+        # if it has the same segmentation value
+        # --> CHANGE HERE!!!!
+        if(mask[point[0],point[1]] != 0) & (output[point[0],point[1]] == 1.0):
+        # old segmentation condition (bellow)
+        #if(mask[point[0],point[1]] == galID) & (output[point[0],point[1]] == 1.0):
             output[point[0],point[1]] = 0.0
             dists.append(sqrt(pow(float(point[0])-ellipse.posy,2.0)+pow(float(point[1])-ellipse.posx,2.0)))
             if(point[0]+1<len(output)):

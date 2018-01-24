@@ -98,20 +98,20 @@ def asymmetryFunction(float[:,:] mat,float[:,:] mask, corrFunct, ell):
          int w, h, countNotMasked, it
     w, h = len(mat[0]), len(mat)
  
-    maskInverse = rotateImage(mask, 90.0)
-    matInverse = rotateImage(mat, 90.0)
+    maskInverse = rotateImage(mask, 180.0)
+    matInverse = rotateImage(mat, 180.0)
     
     countNotMasked = 0
     for i in range(w):
         for j in range(h):
-            if (mask[j,i] < 0.5) and (maskInverse[j,i] < 0.5)and (sqrt((i-w)**2+(j-h)**2) > 0.2*ell.fwhm): 
+            if (mask[j,i] < 0.5) and (maskInverse[j,i] < 0.5) and (sqrt((i-w)**2+(j-h)**2) > 0.2*ell.fwhm): 
                 countNotMasked = countNotMasked + 1
     v1 = []
     v2 = []
     it = 0
     for i in range(w):
         for j in range(h):
-            if (mask[j,i] <= 0.5) and (maskInverse[j,i] <= 0.5)and (sqrt((i-w)**2+(j-h)**2) > 0.2*ell.fwhm): 
+            if (mask[j,i] <= 0.5) and (maskInverse[j,i] <= 0.5) and (sqrt((i-w)**2+(j-h)**2) > 0.2*ell.fwhm): 
                 v1.append(mat[j,i])
                 v2.append(matInverse[j,i])
                 it = it + 1
@@ -238,7 +238,7 @@ def getConcentration(acc, Rp, p1, p2):
     else: 
         return numpy.nan
 
-############################################ updated 24-07-17 - GitHub Rubens
+############################################ 
 #     Funcao Smoothness (Suavizacao):
 # entrada:
 #    mat - matriz do tipo numpy(list(list))
@@ -441,5 +441,72 @@ def boxCarKernel(int dim):
     mat = mat / mat.sum()
     return mat
 
+############################################
+#    AsymmetryConselice
+# entrada:
+#    mat - matriz do tipo numpy(list(list))
+#    corrFunction - funcao de correlacao (stats.pearsonr, stats.spearmanr, ....)
+# retorna:
+#    coeficiente encontrado,
+#    matrizRotacionada
+#    pontos de correlacao (I,I_h)
+#    mascara de pontos considerados (rotacionado e nao rotacionado)
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+def asymmetryConselice(float[:,:] mat, angle, Rp):
+    cdef:
+         float[:,:]  matInverse
+         float numerator, denominator
+         int w, h
+    w, h = len(mat[0]), len(mat)
+ 
+    # angle = 90 or 180???
+    matInverse = rotateImage(mat, angle)
+    
+    numerator = 0
+    denominator = 0
+
+    for i in range(w):
+        for j in range(h):
+            # considering only pixels inside 1.5 * Petrossian_radius
+            if ( sqrt((i-w/2)**2 + (j-h/2)**2) < 1.5 * Rp):
+                # one sum for numerator and other for the denominator
+                numerator += abs(mat[j,i] - matInverse[j,i])
+                denominator += abs(mat[j,i])
+
+    return (numerator) / (2*denominator), matInverse
+
+############################################
+#     SmoothnessConselice
+# entrada:
+#    mat - matriz do tipo numpy(list(list))
+#    kernel - matriz de convolucao
+#    corrFunction - funcao de correlacao (stats.pearsonr, stats.spearmanr, ....)
+# retorna:
+#    coeficiente encontrado (valor e prob. da hipotese nula),
+#    matriz,
+#    matrizRotacionada
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+def smoothnessConselice(float[:,:] mat, float[:,:] smMat, sky, Rp):
+    cdef:
+        int w, h, i, j
+        float total, current
+    
+    w, h = len(mat[0]), len(mat)
+
+    total = 0
+
+    for i in range(w):
+        for j in range(h):
+            # considering only pixels inside 1.5 * Petrossian_radius
+            if ( sqrt((i-w/2)**2 + (j-h/2)**2) < 1.5 * Rp):
+                current = ((mat[j,i]-smMat[j,i]) - sky) / (mat[j,i])
+                # negative values are disconsidered
+                if (current > 0.0):
+                    total += current
+    return 10*total
 
 

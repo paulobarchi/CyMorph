@@ -113,7 +113,7 @@ cdef class CyMorph:
         self.stampSize = value
 
     def setOnlyIndex(self,c):
-        self.indexes2Evaluate = numpy.array([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], dtype=numpy.int32)
+        self.indexes2Evaluate = numpy.array([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], dtype=numpy.int32)
         self.setIndexV(c,int(1))
 
     def isSetIndex(self,indx):
@@ -148,6 +148,8 @@ cdef class CyMorph:
         elif(indx=='Rp') and (self.indexes2Evaluate[14] == 1):
            return True
         elif(indx=='nO') and (self.indexes2Evaluate[15] == 1):
+           return True
+        elif(indx=='CAS') and (self.indexes2Evaluate[16] == 1):
            return True
         else:
            return False
@@ -184,7 +186,9 @@ cdef class CyMorph:
         elif(indx=='Rp'):
            self.indexes2Evaluate[14] = 1           
         elif(indx=='nO'):
-           self.indexes2Evaluate[14] = 1
+           self.indexes2Evaluate[15] = 1
+        elif(indx=='CAS'):
+           self.indexes2Evaluate[16] = 1
         else:
            raise Exception("Unknown index: "+str(indx))
 
@@ -223,8 +227,8 @@ cdef class CyMorph:
         return cuttedFile
 
     def maskAndClean(self,char* path,char* fileName,char* image,char* xtraID,char* maskFile,float ra,float dec,float petroRad,float petroMag,float rowc,float colc,calibratedData,saveFig,clear,float segThreshold):
-    	
-    	# sExtractor 1st run to obtain fit segmentation regions
+        
+        # sExtractor 1st run to obtain fit segmentation regions
         printIfVerbose("Running Sextractor")
         notMasked = galaxyIO.readFITSIMG(path+fileName)
         height, width = len(notMasked), len(notMasked[0])
@@ -296,7 +300,7 @@ cdef class CyMorph:
         segmentationMask, idGalaxy, segMax = gridAlg.filterSegmentedMask(segmentation,e)
         mat = gridAlg.applyMask(notMasked, mask)
         matSexSeg = gridAlg.applyMask(notMasked, segmentationMask)
-        return data, newMat, e, gradModF, noBCG, segmentationMask, mask, mat, matSexSeg, bcg, width, height
+        return data, mat, newMat, e, gradModF, noBCG, segmentationMask, mask, matSexSeg, bcg, width, height
 
     #@profile
     def run(self,char *fpath,char * image,mask_File='',char *saveResult="",float petroRad=0.0,float petroMag=0.0,float rowc=0.0,float colc=0.0,float ra=-1.0,float dec=-1.0,calibratedData=False,char* xtraID='', saveFig=True, clear=False,clip=False):
@@ -305,13 +309,13 @@ cdef class CyMorph:
                 int width, height, it#, r
 
                 #matrices
-                float[:,:] notMasked, mask, segmentation, scaleMatrix, segmentationMask, removedGalaxies, zeros
-                float[:,:] matInverse, matSmoth, matSmoothness, transformed, transformedEll, transformed2, transformedEll2
+                float[:,:] notMasked, mask, segmentation, scaleMatrix, segmentationMask, removedGalaxies,
+                float[:,:] matInverse, matSmoothness, matGaussSmooth
 
                 #indexes:
                 float a2, a3, s2, s3,h, sp2, sp3, ga, c1, c2
                 float sa2, sa3, ss2, ss3,sh, ssp2, ssp3
-                float oa2, oa3, os2, os3,oh, osp2, osp3, yToFind, petroRadByEta
+                float oa2, oa3, os2, os3,oh, osp2, osp3, petroRadByEta, skyMedian
 
                 float[:] radius, acc, etas
 
@@ -336,7 +340,7 @@ cdef class CyMorph:
             fileName = self._runMaskMaker(path,image,xtraID,ra,dec,petroRad,petroMag,rowc,colc)
             path = 'cutted/'
 
-        data, newMat, e, gradModF, noBCG, segmentationMask, mask, mat, matSexSeg, bcg, width, height = self.maskAndClean(path,fileName,image,xtraID,maskFile,ra,dec,petroRad,petroMag,rowc,colc,calibratedData,saveFig,clear,defaultThreshold)
+        data, mat, newMat, e, gradModF, noBCG, segmentationMask, mask, matSexSeg, bcg, width, height = self.maskAndClean(path,fileName,image,xtraID,maskFile,ra,dec,petroRad,petroMag,rowc,colc,calibratedData,saveFig,clear,defaultThreshold)
         
         t1 = time.time()*1000.0
 
@@ -415,7 +419,7 @@ cdef class CyMorph:
 
             labels.append('smoothTime')
             results.append(t1-t0)
-	        
+            
             printIfVerbose("Smoothed")
 
         if(self.onlySegmentation == 0):
@@ -570,7 +574,7 @@ cdef class CyMorph:
 
             if(self.errorVar != 2):
                 t0 = time.time()*1000.0
-            	
+                
                 c1 = indexes.getConcentration(acc, petroRadByEta, 0.8, 0.2)
                 
                 if (numpy.isnan(c1)):
@@ -581,10 +585,20 @@ cdef class CyMorph:
             
             else:
                 c1 = numpy.nan
-                results.append(numpy.nan)
+                results.append(numpy.nan) # append nan time
 
             labels.append("C1")
             results.append(c1)
+
+            # classic Concentration from Conselice, 2003
+            if (self.isSetIndex("CAS")):
+                labels.append('CTime')
+                if(self.errorVar != 2):
+                    results.append(t1-t0)
+                else:
+                    results.append(numpy.nan) # append nan time
+                labels.append("C")
+                results.append(5*c1)
 
 
         if(self.isSetIndex("C") or self.isSetIndex("C2")):
@@ -604,7 +618,7 @@ cdef class CyMorph:
             
             else:
                 c2 = numpy.nan
-                results.append(numpy.nan)
+                results.append(numpy.nan) # append nan time
 
             labels.append("C2")
             results.append(c2)
@@ -627,7 +641,7 @@ cdef class CyMorph:
             
             else:
                 cn = numpy.nan
-                results.append(numpy.nan)
+                results.append(numpy.nan) # append nan time
 
             labels.append("CN")
             results.append(cn)
@@ -648,7 +662,7 @@ cdef class CyMorph:
                 fileName = self._runMaskMaker(path,image,xtraID,ra,dec,petroRad,petroMag,rowc,colc)
                 path = 'cutted/'
 
-            data, newMat, e, gradModF, noBCG, segmentationMask, mask, mat, matSexSeg, bcg, width, height = self.maskAndClean(path,fileName,image,xtraID,maskFile,ra,dec,petroRad,petroMag,rowc,colc,calibratedData,saveFig,clear,self.Asymmetry_sexThreshold)
+            data, mat, newMat, e, gradModF, noBCG, segmentationMask, mask, matSexSeg, bcg, width, height = self.maskAndClean(path,fileName,image,xtraID,maskFile,ra,dec,petroRad,petroMag,rowc,colc,calibratedData,saveFig,clear,self.Asymmetry_sexThreshold)
             
             t1 = time.time()*1000.0
 
@@ -704,7 +718,7 @@ cdef class CyMorph:
                 fileName = self._runMaskMaker(path,image,xtraID,ra,dec,petroRad,petroMag,rowc,colc)
                 path = 'cutted/'
 
-            data, newMat, e, gradModF, noBCG, segmentationMask, mask, mat, matSexSeg, bcg, width, height = self.maskAndClean(path,fileName,image,xtraID,maskFile,ra,dec,petroRad,petroMag,rowc,colc,calibratedData,saveFig,clear,self.Smoothness_sexThreshold)
+            data, mat, newMat, e, gradModF, noBCG, segmentationMask, mask, matSexSeg, bcg, width, height = self.maskAndClean(path,fileName,image,xtraID,maskFile,ra,dec,petroRad,petroMag,rowc,colc,calibratedData,saveFig,clear,self.Smoothness_sexThreshold)
             
             t1 = time.time()*1000.0
 
@@ -747,7 +761,7 @@ cdef class CyMorph:
                 self.errorVar = 1
             if(saveFig):
                 numpy.savetxt("imgs/ssmoothness.txt",numpy.array(s3SexCorr).T)
-	        
+            
             labels.append("sS3")
             results.append(ss3)
 
@@ -765,7 +779,7 @@ cdef class CyMorph:
                 fileName = self._runMaskMaker(path,image,xtraID,ra,dec,petroRad,petroMag,rowc,colc)
                 path = 'cutted/'
 
-            data, newMat, e, gradModF, noBCG, segmentationMask, mask, mat, matSexSeg, bcg, width, height = self.maskAndClean(path,fileName,image,xtraID,maskFile,ra,dec,petroRad,petroMag,rowc,colc,calibratedData,saveFig,clear,self.Entropy_sexThreshold)
+            data, mat, newMat, e, gradModF, noBCG, segmentationMask, mask, matSexSeg, bcg, width, height = self.maskAndClean(path,fileName,image,xtraID,maskFile,ra,dec,petroRad,petroMag,rowc,colc,calibratedData,saveFig,clear,self.Entropy_sexThreshold)
             
             t1 = time.time()*1000.0
             
@@ -799,7 +813,7 @@ cdef class CyMorph:
                 fileName = self._runMaskMaker(path,image,xtraID,ra,dec,petroRad,petroMag,rowc,colc)
                 path = 'cutted/'
 
-            data, newMat, e, gradModF, noBCG, segmentationMask, mask, mat, matSexSeg, bcg, width, height = self.maskAndClean(path,fileName,image,xtraID,maskFile,ra,dec,petroRad,petroMag,rowc,colc,calibratedData,saveFig,clear,self.Ga_sexThreshold)
+            data, mat, newMat, e, gradModF, noBCG, segmentationMask, mask, matSexSeg, bcg, width, height = self.maskAndClean(path,fileName,image,xtraID,maskFile,ra,dec,petroRad,petroMag,rowc,colc,calibratedData,saveFig,clear,self.Ga_sexThreshold)
             
             t1 = time.time()*1000.0
 
@@ -853,9 +867,87 @@ cdef class CyMorph:
             labels.append("sG1")
             results.append(g1)
         
+        if(self.isSetIndex("CAS")):
+
+            printIfVerbose("Starting classic CAS (Conselice, 2003)")
+
+        	# Concentration - Conselice, 2003 (if not C1)
+        	# if not calculated yet on C1 block
+
+            if(not self.isSetIndex("C") and not self.isSetIndex("C1")):
+
+                labels.append('CTime')
+        		
+                if(self.errorVar != 2):
+
+                    t0 = time.time()*1000.0
+
+                    classicC = 5*indexes.getConcentration(acc, petroRadByEta, 0.8, 0.2)
+
+                    if (numpy.isnan(classicC)):
+                        self.errorVar = 3
+
+                    t1 = time.time()*1000.0
+                    results.append(t1-t0)
+            
+                else:
+                    classicC = numpy.nan
+                    results.append(numpy.nan) # append nan time
+    
+                labels.append("C")
+                results.append(classicC)
+
+            # Asymmetry - Conselice, 2003
+
+            t0 = time.time()*1000.0
+
+            classicA, rotatedMat = indexes.asymmetryConselice(newMat, 180.00, petroRadByEta)
+
+            t1 = time.time()*1000.0
+
+            labels.append('ATime')
+            results.append(t1-t0)
+
+            labels.append("A")
+            results.append(classicA)
+
+            # Smoothness - Conselice, 2003
+
+            printIfVerbose("Smoothing image")
+
+            t0 = time.time()*1000.0            
+
+            # get smoothed matrix by gaussian filter
+            matGaussSmooth = gridAlg.gaussianFilter(newMat, petroRadByEta)
+        
+            t1 = time.time()*1000.0
+
+            labels.append('GaussianSmoothTime')
+            results.append(t1-t0)
+
+            t0 = time.time()*1000.0
+
+            # get sky median
+            skyMedian = gridAlg.getSkyMedian(newMat)
+        
+            if(saveFig):
+                galaxyIO.plotFITS(matGaussSmooth,"imgs/CASsmoothed.fits")
+                galaxyIO.plotFITS(rotatedMat,"imgs/CASrotated.fits")
+
+            classicS = indexes.smoothnessConselice(newMat, matGaussSmooth, skyMedian, petroRadByEta)
+
+            t1 = time.time()*1000.0
+
+            labels.append('STime')
+            results.append(t1-t0)
+
+            labels.append("S")
+            results.append(classicS)
+
+        
         labels.append("Error")
         results.append(self.errorVar)
-        
+
         if (len(saveResult) != 0):
             outputVector= [results]
             
