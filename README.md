@@ -11,6 +11,7 @@ https://github.com/rsautter/CyMorph
  - Numpy
  - SciPy
  - Cython
+ - Mahotas
 
 ## Before Compiling - Create directories and download sExtractor
 
