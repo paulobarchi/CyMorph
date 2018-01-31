@@ -56,7 +56,10 @@ def saveConcentrationDev(dists, conc, nsample, foldSize=15):
 
 
 def readFITSIMG(string):
-    return numpy.array(fits.open(string)[0].data, numpy.float32)
+    fitsFile = fits.open(string)
+    np_array = numpy.array(fitsFile[0].data, numpy.float32)
+    fitsFile.close()
+    return np_array
 
 def runSextractor(filePath, filename,xtraID,par=[],value=[]):
     configFile = ConfigParser.ConfigParser()
