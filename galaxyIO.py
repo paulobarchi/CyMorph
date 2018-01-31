@@ -10,8 +10,7 @@ def plotFITS(mat,fileName):
     hdu = fits.PrimaryHDU(mat)
     hdu.writeto(fileName, clobber=True)
 
-def saveCSV(pts,fileName):
-    
+def saveCSV(pts,fileName):    
     numpy.savetxt(fileName,numpy.array(pts).T)
 
 def saveConcentrationDev(dists, conc, nsample, foldSize=15):
