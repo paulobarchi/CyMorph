@@ -461,32 +461,29 @@ def asymmetryConselice(float[:,:] mat, angle, Rp):
          int w, h
     w, h = len(mat[0]), len(mat)
  
-    # angle = 90 or 180???
     matInverse = rotateImage(mat, angle)
     
-    numerator = 0
-    denominator = 0
+    numerator = 0.0
+    denominator = 0.0
 
     for i in range(w):
         for j in range(h):
             # considering only pixels inside 1.5 * Petrossian_radius
-            if ( sqrt((i-w/2)**2 + (j-h/2)**2) < 1.5 * Rp):
+            if ( ( sqrt((i-w/2)**2 + (j-h/2)**2) < 1.5 * Rp )  and mat[j,i] > 0.0):
                 # one sum for numerator and other for the denominator
-                numerator += abs(mat[j,i] - matInverse[j,i])
-                denominator += abs(mat[j,i])
+                numerator = numerator + abs(mat[j,i] - matInverse[j,i])
+                denominator = denominator + abs(mat[j,i])
 
-    return (numerator) / (2*denominator), matInverse
+    return (numerator) / (denominator), matInverse
 
-############################################
-#     SmoothnessConselice
-# entrada:
-#    mat - matriz do tipo numpy(list(list))
-#    kernel - matriz de convolucao
-#    corrFunction - funcao de correlacao (stats.pearsonr, stats.spearmanr, ....)
-# retorna:
-#    coeficiente encontrado (valor e prob. da hipotese nula),
-#    matriz,
-#    matrizRotacionada
+#################################################
+#     SmoothnessConselice - from Conselice (2003)
+# input:
+#    mat - numpy matrix (list(list))
+#    smMat - smoothed matrix
+#    smoothedSky - skyMedian from smoothed matrix
+#    Rp - petrosian radius
+#
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.cdivision(True)
@@ -497,16 +494,89 @@ def smoothnessConselice(float[:,:] mat, float[:,:] smMat, sky, Rp):
     
     w, h = len(mat[0]), len(mat)
 
-    total = 0
+    numerator = 0.0
+    denominator = 0.0
 
     for i in range(w):
         for j in range(h):
-            # considering only pixels inside 1.5 * Petrossian_radius
-            if ( sqrt((i-w/2)**2 + (j-h/2)**2) < 1.5 * Rp):
-                current = ((mat[j,i]-smMat[j,i]) - sky) / (mat[j,i])
-                # negative values are disconsidered
-                if (current > 0.0):
-                    total += current
-    return 10*total
+            # considering only pixels inside 1.5 * petrossian radius
+            # and outside 0.25 * petrossian radius
+            if ( (sqrt((i-w/2)**2 + (j-h/2)**2) <= 1.5 * Rp) and \
+                (sqrt((i-w/2)**2 + (j-h/2)**2) > 0.25 * Rp)):
+                if ( ( mat[j,i]-smMat[j,i] ) - sky  > 0.0 ):
+                    numerator = numerator + ( mat[j,i]-smMat[j,i] - sky)
+                    denominator =  denominator + (mat[j,i])
 
+    if (denominator > 0.0):
+        return 10*(numerator/denominator)
+    else:
+        return numpy.nan
 
+############################################
+#     SmoothnessLotz - from Lotz (2004)
+# input:
+#    mat - numpy matrix (list(list))
+#    smMat - smoothed matrix
+#    smoothedSky - skyMedian from smoothed matrix
+#    Rp - petrosian radius
+#
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+def smoothnessLotz(float[:,:] mat, float[:,:] smMat, smoothedSky, Rp):
+    cdef:
+        int w, h, i, j
+        float numerator, denominator
+    
+    w, h = len(mat[0]), len(mat)
+
+    numerator = 0.0
+    denominator = 0.0
+
+    for i in range(w):
+        for j in range(h):
+            # considering only pixels inside 1.5 * petrossian radius
+            # and outside 0.25 * petrossian radius
+            if ( (sqrt((i-w/2)**2 + (j-h/2)**2) <= 1.5 * Rp) and \
+                (sqrt((i-w/2)**2 + (j-h/2)**2) > 0.25 * Rp) ):                
+                numerator = numerator + abs( ( mat[j,i]-smMat[j,i] ) )
+                denominator = denominator + abs(mat[j,i])
+
+    if (denominator > 0.0):
+        return (numerator/denominator)-smoothedSky
+    else:
+        return numpy.nan
+
+############################################
+#     SmoothnessTakamiya - from Takamiya (1999)
+# input:
+#    mat - numpy matrix (list(list))
+#    smMat - smoothed matrix
+#    Rp - petrosian radius
+#
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+def smoothnessTakamiya(float[:,:] mat, float[:,:] smMat, Rp):
+    cdef:
+        int w, h, i, j
+        float numerator, denominator
+    
+    w, h = len(mat[0]), len(mat)
+
+    numerator = 0.0
+    denominator = 0.0
+
+    for i in range(w):
+        for j in range(h):
+            # considering only pixels inside 1.5 * petrossian radius
+            # and outside 0.25 * petrossian radius
+            if ( (sqrt((i-w/2)**2 + (j-h/2)**2) <= 1.5 * Rp) and \
+                (sqrt((i-w/2)**2 + (j-h/2)**2) > 0.25 * Rp) ):
+                numerator = numerator + smMat[j,i]
+                denominator = denominator + mat[j,i]
+
+    if (denominator > 0.0):
+        return (numerator/denominator)
+    else:
+        return numpy.nan
