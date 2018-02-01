@@ -407,7 +407,7 @@ cdef class CyMorph:
             diffMat = numpy.array([[(matSmoothness[i][j]-gradModF[i][j]) for j in range(len(newMat[i]))] for i in range(len(newMat))], dtype=numpy.float32)
             maximo = numpy.max(diffMat)
             diffSmoothed = numpy.array([[(matSmoothness[i][j]-noBCG[i][j])/maximo for j in range(len(newMat[i]))] for i in range(len(newMat))], dtype=numpy.float32)
-            rotated = indexes.rotateImage(newMat,180)
+            rotated = indexes.rotateImage(newMat,180.00)
             diffRotated = numpy.array([[ (newMat[i][j]-rotated[i][j]) for j in range(len(newMat[i]))] for i in range(len(newMat))], dtype=numpy.float32)
         
             if(saveFig):
