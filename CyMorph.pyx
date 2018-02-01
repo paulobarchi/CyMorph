@@ -198,14 +198,14 @@ cdef class CyMorph:
         return ".".join(splitted)
 
     def clearIt(self,fileName,xtraID):
-        # os.remove("cutted/"+str(xtraID)+".fit")
+        # os.remove("stamps/"+str(xtraID)+".fit")
         os.remove(str(xtraID)+".cat")
         os.remove(str(xtraID)+"_seg.fits")
         os.remove(str(xtraID)+"_bcg.fits")
 
  
     def _runMaskMaker(self,char* path,char* fileName,char* xtraID,float ra, float dec,float petroRad,float petroMag,float rowc,float colc):
-        cuttedFile = str(xtraID)+'.fit'
+        stampFile = str(xtraID)+'.fit'
 
         configFile = ConfigParser.ConfigParser()
         configFile.read('cfg/paths.ini')
@@ -224,7 +224,7 @@ cdef class CyMorph:
         with open(str(xtraID)+"_log.txt",'r') as eF:
             self.errorVar = int(eF.read())
         os.remove(str(xtraID)+"_log.txt")
-        return cuttedFile
+        return stampFile
 
     def maskAndClean(self,char* path,char* fileName,char* image,char* xtraID,char* maskFile,float ra,float dec,float petroRad,float petroMag,float rowc,float colc,calibratedData,saveFig,clear,float segThreshold):
         
@@ -254,12 +254,12 @@ cdef class CyMorph:
         newMat, holes = gridAlg.interpolateEllipse(removedGalaxies,e)
 
         # save clean stamp (fit)
-        galaxyIO.plotFITS(newMat,"cutted/"+str(xtraID)+".fit")
+        galaxyIO.plotFITS(newMat,"stamps/"+str(xtraID)+".fit")
 
         # sExtractor 2nd run (with clean image as input) to calibrate background
         printIfVerbose("Running Sextractor again")
         bcgW = 32
-        galaxyIO.runSextractor("cutted/", str(xtraID)+".fit", xtraID,["BACK_SIZE","DETECT_THRESH"],[bcgW,segThreshold])
+        galaxyIO.runSextractor("stamps/", str(xtraID)+".fit", xtraID,["BACK_SIZE","DETECT_THRESH"],[bcgW,segThreshold])
         segmentation = galaxyIO.readFITSIMG(str(xtraID)+"_seg.fits")
         bcg = galaxyIO.readFITSIMG(str(xtraID)+"_bcg.fits")
         dic, data = galaxyIO.readSextractorOutput(str(xtraID)+".cat")
@@ -338,7 +338,7 @@ cdef class CyMorph:
         # segmentation, mask and cleaning stamp        
         if (ra != -1.0) and (dec != -1.0) and (clip==True):
             fileName = self._runMaskMaker(path,image,xtraID,ra,dec,petroRad,petroMag,rowc,colc)
-            path = 'cutted/'
+            path = 'stamps/'
 
         data, mat, newMat, e, gradModF, noBCG, segmentationMask, mask, matSexSeg, bcg, width, height = self.maskAndClean(path,fileName,image,xtraID,maskFile,ra,dec,petroRad,petroMag,rowc,colc,calibratedData,saveFig,clear,defaultThreshold)
         
@@ -660,7 +660,7 @@ cdef class CyMorph:
 
             if (ra != -1.0) and (dec != -1.0) and (clip==True):
                 fileName = self._runMaskMaker(path,image,xtraID,ra,dec,petroRad,petroMag,rowc,colc)
-                path = 'cutted/'
+                path = 'stamps/'
 
             data, mat, newMat, e, gradModF, noBCG, segmentationMask, mask, matSexSeg, bcg, width, height = self.maskAndClean(path,fileName,image,xtraID,maskFile,ra,dec,petroRad,petroMag,rowc,colc,calibratedData,saveFig,clear,self.Asymmetry_sexThreshold)
             
@@ -716,7 +716,7 @@ cdef class CyMorph:
 
             if (ra != -1.0) and (dec != -1.0) and (clip==True):
                 fileName = self._runMaskMaker(path,image,xtraID,ra,dec,petroRad,petroMag,rowc,colc)
-                path = 'cutted/'
+                path = 'stamps/'
 
             data, mat, newMat, e, gradModF, noBCG, segmentationMask, mask, matSexSeg, bcg, width, height = self.maskAndClean(path,fileName,image,xtraID,maskFile,ra,dec,petroRad,petroMag,rowc,colc,calibratedData,saveFig,clear,self.Smoothness_sexThreshold)
             
@@ -777,7 +777,7 @@ cdef class CyMorph:
 
             if (ra != -1.0) and (dec != -1.0) and (clip==True):
                 fileName = self._runMaskMaker(path,image,xtraID,ra,dec,petroRad,petroMag,rowc,colc)
-                path = 'cutted/'
+                path = 'stamps/'
 
             data, mat, newMat, e, gradModF, noBCG, segmentationMask, mask, matSexSeg, bcg, width, height = self.maskAndClean(path,fileName,image,xtraID,maskFile,ra,dec,petroRad,petroMag,rowc,colc,calibratedData,saveFig,clear,self.Entropy_sexThreshold)
             
@@ -811,7 +811,7 @@ cdef class CyMorph:
 
             if (ra != -1.0) and (dec != -1.0) and (clip==True):
                 fileName = self._runMaskMaker(path,image,xtraID,ra,dec,petroRad,petroMag,rowc,colc)
-                path = 'cutted/'
+                path = 'stamps/'
 
             data, mat, newMat, e, gradModF, noBCG, segmentationMask, mask, matSexSeg, bcg, width, height = self.maskAndClean(path,fileName,image,xtraID,maskFile,ra,dec,petroRad,petroMag,rowc,colc,calibratedData,saveFig,clear,self.Ga_sexThreshold)
             
@@ -871,6 +871,7 @@ cdef class CyMorph:
 
             printIfVerbose("Starting classic CAS (Conselice, 2003)")
 
+            #####################################################################
         	# Concentration - Conselice, 2003 (if not C1)
         	# if not calculated yet on C1 block
 
@@ -897,11 +898,12 @@ cdef class CyMorph:
                 labels.append("C")
                 results.append(classicC)
 
+            #####################################################################
             # Asymmetry - Conselice, 2003
 
             t0 = time.time()*1000.0
 
-            classicA, rotatedMat = indexes.asymmetryConselice(newMat, 180.00, petroRadByEta)
+            classicA, rotatedMat = indexes.asymmetryConselice(noBCG, 180.00, petroRadByEta)
 
             t1 = time.time()*1000.0
 
@@ -911,38 +913,45 @@ cdef class CyMorph:
             labels.append("A")
             results.append(classicA)
 
-            # Smoothness - Conselice, 2003
+            #####################################################################
+            # Smoothness - Lotz, 2004
 
             printIfVerbose("Smoothing image")
 
             t0 = time.time()*1000.0            
 
-            # get smoothed matrix by gaussian filter
-            matGaussSmooth = gridAlg.gaussianFilter(newMat, petroRadByEta)
+            # get smoothed matrix by gaussian filter - 0.25*Rp (Lotz)
+            matLotzSmooth = gridAlg.gaussianFilter(noBCG, 0.25 * petroRadByEta)
         
             t1 = time.time()*1000.0
 
-            labels.append('GaussianSmoothTime')
+            labels.append('classSmoothTime')
             results.append(t1-t0)
 
             t0 = time.time()*1000.0
 
             # get sky median
-            skyMedian = gridAlg.getSkyMedian(newMat)
+            skyMedian = gridAlg.getSkyMedian(noBCG)
         
             if(saveFig):
-                galaxyIO.plotFITS(matGaussSmooth,"imgs/CASsmoothed.fits")
-                galaxyIO.plotFITS(rotatedMat,"imgs/CASrotated.fits")
+                galaxyIO.plotFITS(matLotzSmooth,"imgs/classSmoothed.fits")
 
-            classicS = indexes.smoothnessConselice(newMat, matGaussSmooth, skyMedian, petroRadByEta)
+            lotzS = indexes.smoothnessLotz(noBCG, matLotzSmooth, skyMedian, petroRadByEta)
 
             t1 = time.time()*1000.0
 
-            labels.append('STime')
+            labels.append('SLotzTime')
             results.append(t1-t0)
 
-            labels.append("S")
-            results.append(classicS)
+            labels.append("SLotz")
+            results.append(lotzS)
+
+            #####################################################################
+            # Smoothness - Takamiya, 1999
+
+            takamiyaS = indexes.smoothnessTakamiya(noBCG, matLotzSmooth, petroRadByEta)
+            labels.append("STakam")
+            results.append(takamiyaS)
 
         
         labels.append("Error")
