@@ -643,12 +643,8 @@ cpdef tuple filterSegmentedMask(float[:,:] mask, ellipse):
     galID=mask[epos1, epos2]
     while(len(pts) > 0):
         point = numpy.array(pts.pop(0), dtype=numpy.int32)
-        #print(point,mask[point],output[point])
-        # if it has the same segmentation value
-        # --> CHANGE HERE!!!!
+        # if it has segmentation value != 0
         if(mask[point[0],point[1]] != 0) & (output[point[0],point[1]] == 1.0):
-        # old segmentation condition (bellow)
-        #if(mask[point[0],point[1]] == galID) & (output[point[0],point[1]] == 1.0):
             output[point[0],point[1]] = 0.0
             dists.append(sqrt(pow(float(point[0])-ellipse.posy,2.0)+pow(float(point[1])-ellipse.posx,2.0)))
             if(point[0]+1<len(output)):
