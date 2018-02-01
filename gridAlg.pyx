@@ -302,8 +302,8 @@ cpdef float butterworth(float d,float d0,float n):
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.cdivision(True)
-def gaussianFilter(float[:,:] mat, float Rp):
-    return gaussian_filter(mat, sigma=(1/5) * 1.5 * Rp)
+def gaussianFilter(float[:,:] mat, float sigma):
+    return gaussian_filter( mat, sigma = sigma )
 
 
 @cython.boundscheck(False)
