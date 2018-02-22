@@ -53,7 +53,6 @@ def saveConcentrationDev(dists, conc, nsample, foldSize=15):
         f.write(header)
         numpy.savetxt(f,box,fmt='%.5f')
 
-
 def readFITSIMG(string):
     fitsFile = fits.open(string)
     np_array = numpy.array(fitsFile[0].data, numpy.float32)
@@ -68,7 +67,6 @@ def runSextractor(filePath, filename,xtraID,par=[],value=[]):
     for i in range(len(par)):
         cmd = cmd+" -"+par[i]+" "+str(value[i])
     cmd = cmd+" -CATALOG_NAME "+str(xtraID)+".cat  -CHECKIMAGE_TYPE SEGMENTATION,BACKGROUND -CHECKIMAGE_NAME "+str(xtraID)+"_seg.fits,"+str(xtraID)+"_bcg.fits -VERBOSE_TYPE QUIET"
-    #print(cmd)
     process = os.popen(cmd)
     log = process.read()
     return log
