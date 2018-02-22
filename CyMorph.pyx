@@ -1,4 +1,3 @@
-
 import scipy.stats as stats
 from GPA import *
 from scipy.ndimage.filters import convolve
@@ -41,22 +40,22 @@ cdef class CyMorph:
         self.verbose = True
         self.sky = -1.0
 
-        self.Ga_Tolerance = 0.03
-        self.Ga_Angular_Tolerance = 0.03
+        self.Ga_Tolerance = 0.02
+        self.Ga_Angular_Tolerance = 0.04
         self.Ga_Position_Tolerance =  1.0
-        self.Ga_sexThreshold = 1.4 # TODO: ASSERT BEST DEFAULT THRESHOLD
+        self.Ga_sexThreshold = 1.0
 
         self.Spirality_Ny, self.Spirality_Nx = 200, 400
 
         self.Entropy_KFolds = 150
-        self.Entropy_sexThreshold = 1.4 # TODO: ASSERT BEST DEFAULT THRESHOLD
+        self.Entropy_sexThreshold = 0.8
 
         self.Concentration_Density = 100
         
         self.smoothingDegradation = 0.9
-        self.Smoothness_sexThreshold = 1.4 # TODO: ASSERT BEST DEFAULT THRESHOLD
+        self.Smoothness_sexThreshold = 1.4
 
-        self.Asymmetry_sexThreshold = 1.4 # TODO: ASSERT BEST DEFAULT THRESHOLD
+        self.Asymmetry_sexThreshold = 1.8
 
         self.butterOrder = 3
         self.minCut = 0.09
@@ -263,8 +262,7 @@ cdef class CyMorph:
         segmentation = galaxyIO.readFITSIMG(str(xtraID)+"_seg.fits")
         bcg = galaxyIO.readFITSIMG(str(xtraID)+"_bcg.fits")
         dic, data = galaxyIO.readSextractorOutput(str(xtraID)+".cat")
-        # here we have a dictionary and data of identified objects in image
-        dicFiltered, dataFiltered = galaxyIO.filterSextractorData(mask, dic, data)
+        
         if clear:
             self.clearIt(fileName,xtraID)
         if saveFig:
@@ -439,6 +437,9 @@ cdef class CyMorph:
                 labels.append('a2Time')
                 results.append(t1-t0)
 
+                if (numpy.isnan(a2)):
+                    self.errorVar = 6
+
                 labels.append("A2")
                 results.append(a2)
 
@@ -455,6 +456,9 @@ cdef class CyMorph:
 
                 labels.append('A3Time')
                 results.append(t1-t0)
+
+                if (numpy.isnan(a3)):
+                    self.errorVar = 6
 
                 labels.append("A3")
                 results.append(a3)
@@ -473,6 +477,7 @@ cdef class CyMorph:
             
                 if (numpy.isnan(s2)):
                     self.errorVar = 7
+
                 if(saveFig):
                     numpy.savetxt("imgs/smoothness.txt",numpy.array(s22RpCorr).T)
 
@@ -493,6 +498,7 @@ cdef class CyMorph:
             
                 if (numpy.isnan(s3)):
                     self.errorVar = 7
+                
                 if(saveFig):
                     numpy.savetxt("imgs/smoothness.txt",numpy.array(s32RpCorr).T)
 
@@ -511,9 +517,9 @@ cdef class CyMorph:
                 labels.append('HTime')
                 results.append(t1-t0)
 
-                if (h>1.0) or (h < 0.0):
-                    self.errorVar = 6
-                    raise Exception("Unexpected Entropy value:"+str(h))
+                if (h > 1.0) or (h < 0.0):
+                    self.errorVar = 4
+                    raise Exception("Unexpected Entropy value: "+str(h))
                 
                 labels.append("H")
                 results.append(h)
@@ -534,9 +540,9 @@ cdef class CyMorph:
                 labels.append('GaTime')
                 results.append(t1-t0)
 
-                if (ga > 2.0) or (ga < 0.0):
-                    self.errorVar = 5
-                    raise Exception('Unexpected Ga value:'+str(ga))
+                if (ga >= 2.0) or (ga <= 0.0):
+                    self.errorVar = 3
+                    raise Exception('Unexpected Ga value: '+str(ga))
                 
                 labels.append("Ga")
                 results.append(ga)
@@ -557,9 +563,9 @@ cdef class CyMorph:
                 labels.append('G1Time')
                 results.append(t1-t0)
 
-                if (g1 > 2.0) or (g1 < 0.0):
-                    self.errorVar = 4
-                    raise Exception('Unexpected Ga value:'+str(g1))
+                if (g1 >= 2.0) or (g1 <= 0.0):
+                    self.errorVar = 3
+                    raise Exception('Unexpected Ga value: '+str(g1))
                 
                 labels.append("G1")
                 results.append(g1)
@@ -578,7 +584,7 @@ cdef class CyMorph:
                 c1 = indexes.getConcentration(acc, petroRadByEta, 0.8, 0.2)
                 
                 if (numpy.isnan(c1)):
-                    self.errorVar = 3
+                    self.errorVar = 5
                 
                 t1 = time.time()*1000.0
                 results.append(t1-t0)
@@ -611,7 +617,7 @@ cdef class CyMorph:
                 c2 = indexes.getConcentration(acc, petroRadByEta, 0.9, 0.5)
                 
                 if (numpy.isnan(c2)):
-                    self.errorVar = 3
+                    self.errorVar = 5
                 
                 t1 = time.time()*1000.0
                 results.append(t1-t0)
@@ -634,7 +640,7 @@ cdef class CyMorph:
                 cn = indexes.getConcentration(acc, petroRadByEta, self.d1, self.d2)
                 
                 if (numpy.isnan(cn)):
-                    self.errorVar = 3
+                    self.errorVar = 5
                 
                 t1 = time.time()*1000.0
                 results.append(t1-t0)
@@ -675,6 +681,7 @@ cdef class CyMorph:
             t0 = time.time()*1000.0
 
             sa2, matInverse, a2SexCorr = indexes.asymmetryFunction(gradModF, segmentationMask, stats.pearsonr, e)
+            
             if(saveFig):
                 numpy.savetxt("imgs/sasymmetry.txt",numpy.array(a2SexCorr).T)
 
@@ -682,6 +689,9 @@ cdef class CyMorph:
 
             labels.append('sA2Time')
             results.append(t1-t0)
+
+            if (numpy.isnan(sa2)):
+                self.errorVar = 6
             
             labels.append("sA2")
             results.append(sa2)
@@ -700,6 +710,9 @@ cdef class CyMorph:
 
             labels.append('sA3Time')
             results.append(t1-t0)
+
+            if (numpy.isnan(sa3)):
+                self.errorVar = 6
             
             labels.append("sA3")
             results.append(sa3)
@@ -738,7 +751,8 @@ cdef class CyMorph:
             results.append(t1-t0)
 
             if (numpy.isnan(ss2)):
-                self.errorVar = 1
+                self.errorVar = 7
+
             if(saveFig):
                 numpy.savetxt("imgs/ssmoothness.txt",numpy.array(s2SexCorr).T)
             
@@ -758,7 +772,8 @@ cdef class CyMorph:
             results.append(t1-t0)
 
             if (numpy.isnan(ss3)):
-                self.errorVar = 1
+                self.errorVar = 7
+
             if(saveFig):
                 numpy.savetxt("imgs/ssmoothness.txt",numpy.array(s3SexCorr).T)
             
@@ -795,8 +810,9 @@ cdef class CyMorph:
             labels.append('sHTime')
             results.append(t1-t0)
 
-            if (sh>1.0) or (sh < 0.0):
-                raise Exception("Unexpected Sextractor Segmentation Entropy value:"+str(sh))
+            if (sh > 1.0) or (sh < 0.0):
+                self.errorVar = 4
+                raise Exception("Unexpected Entropy value: "+str(sh))
             
             labels.append("sH")
             results.append(sh)
@@ -834,9 +850,9 @@ cdef class CyMorph:
 
             t1 = time.time()*1000.0
 
-            if (ga>2.0) or (ga < 0.0):
-                raise Exception('Unexpected Ga value:'+str(ga))
-            
+            if (ga >= 2.0) or (ga <= 0.0):
+                self.errorVar = 3
+                raise Exception('Unexpected Ga value: '+str(ga))
 
             labels.append('sGaTime')
             results.append(t1-t0)
@@ -858,8 +874,9 @@ cdef class CyMorph:
             
             t1 = time.time()*1000.0
 
-            if (g1>2.0) or (g1 < 0.0):
-                raise Exception('Unexpected Ga value:'+str(ga))
+            if (ga >= 2.0) or (ga <= 0.0):
+                self.errorVar = 3
+                raise Exception('Unexpected Ga value: '+str(ga))
                         
             labels.append('sG1Time')
             results.append(t1-t0)
@@ -886,7 +903,7 @@ cdef class CyMorph:
                     classicC = 5*indexes.getConcentration(acc, petroRadByEta, 0.8, 0.2)
 
                     if (numpy.isnan(classicC)):
-                        self.errorVar = 3
+                        self.errorVar = 5
 
                     t1 = time.time()*1000.0
                     results.append(t1-t0)
@@ -914,44 +931,121 @@ cdef class CyMorph:
             results.append(classicA)
 
             #####################################################################
-            # Smoothness - Lotz, 2004
+            # Smoothness - Conselice, 2003
 
-            printIfVerbose("Smoothing image")
+            printIfVerbose("Smoothing image (Conselice)")
 
-            t0 = time.time()*1000.0            
+            # t0 = time.time()*1000.0
 
-            # get smoothed matrix by gaussian filter - 0.25*Rp (Lotz)
-            matLotzSmooth = gridAlg.gaussianFilter(noBCG, 0.25 * petroRadByEta)
+            # get smoothed matrix by gaussian filter - 0.3*Rp (Conselice)
+            # matConsSmooth = gridAlg.gaussianFilter(noBCG, 0.3 * petroRadByEta)
         
-            t1 = time.time()*1000.0
+            # t1 = time.time()*1000.0
 
-            labels.append('classSmoothTime')
-            results.append(t1-t0)
+            # labels.append('ConseliceSmoothTime')
+            # results.append(t1-t0)
 
-            t0 = time.time()*1000.0
+            # t0 = time.time()*1000.0
 
             # get sky median
-            skyMedian = gridAlg.getSkyMedian(noBCG)
+            # smoothSkyMedian = gridAlg.getSkyMedian(matConsSmooth)            
         
-            if(saveFig):
-                galaxyIO.plotFITS(matLotzSmooth,"imgs/classSmoothed.fits")
+            # if(saveFig):
+            #     galaxyIO.plotFITS(matConsSmooth,"imgs/ConsSmoothed.fits")
+            #     galaxyIO.plotFITS(rotatedMat,"imgs/CASrotated.fits")
 
-            lotzS = indexes.smoothnessLotz(noBCG, matLotzSmooth, skyMedian, petroRadByEta)
+            # considering smoothed sky median
+            # conseliceS1 = indexes.smoothnessConselice1(noBCG, matConsSmooth, smoothSkyMedian, petroRadByEta)
 
-            t1 = time.time()*1000.0
+            # t1 = time.time()*1000.0
 
-            labels.append('SLotzTime')
-            results.append(t1-t0)
+            # considering 'clean' (original) sky median
+            # conseliceS3 = indexes.smoothnessConselice3(noBCG, matConsSmooth, petroRadByEta)
 
-            labels.append("SLotz")
-            results.append(lotzS)
+            # labels.append('SConsTime')
+            # results.append(t1-t0)
+
+            # labels.append("SCons1")
+            # results.append(conseliceS1)
+            # labels.append("SCons3")
+            # results.append(conseliceS3)
+
+            # matConsSmooth = gridAlg.gaussianFilter(newMat, 0.03 * petroRadByEta)
+            # skyMedian = gridAlg.getSkyMedian(newMat)
+            # sC, nums, dens = indexes.smoothnessConselice4(newMat, matConsSmooth, skyMedian)
+
+            # matConsSmooth = gridAlg.gaussianFilter(newMat, 0.03 * petroRadByEta)
+            # skyMedian = gridAlg.getSkyMedian(newMat)
+            # sC, pixels, smPixels = indexes.smoothnessConselice4(newMat, matConsSmooth, skyMedian, petroRadByEta)
+            # sC, terms = indexes.smoothnessConselice2(newMat, matConsSmooth, skyMedian, petroRadByEta)
+
+            # sC3 = indexes.smoothnessConselice3(newMat, matConsSmooth, noBCG, petroRadByEta)
+
+            # diffMat = newMat.sub(matConsSmooth).abs()
+            # diffMat = numpy.abs(newMat-matConsSmooth)
+            # if(saveFig):
+            #     galaxyIO.plotFITS(newMat,"imgs/cleanStamp.fits")
+            #     galaxyIO.plotFITS(matConsSmooth,"imgs/ConsSmoothed.fits")
+            #     galaxyIO.plotFITS(diffMat,"imgs/diffMat.fits")
+            #     galaxyIO.saveCSV(nums, "imgs/nums.txt")
+            #     galaxyIO.saveCSV(dens, "imgs/dems.txt")
+            #     # galaxyIO.saveCSV(terms, "imgs/terms.txt")
+            #     print "skyMedian: " + str(skyMedian)
+            #     print "Rp: " + str(petroRadByEta)
+
+            # labels.append("sC1")
+            # results.append(sC1)
+            # labels.append("sC003")
+            # results.append(sC)
+            # labels.append("sC3")
+            # results.append(sC3)
+
+            matConsSmooth = gridAlg.gaussianFilter(newMat, 0.3 * petroRadByEta)
+            skyMedian = gridAlg.getSkyMedian(newMat)
+            sC, nums, dens = indexes.smoothnessConselice4(newMat, matConsSmooth, skyMedian)
+
+            labels.append("sC03")
+            results.append(sC)
 
             #####################################################################
-            # Smoothness - Takamiya, 1999
+            # Smoothness - Lotz, 2004
 
-            takamiyaS = indexes.smoothnessTakamiya(noBCG, matLotzSmooth, petroRadByEta)
-            labels.append("STakam")
-            results.append(takamiyaS)
+            # printIfVerbose("Smoothing image")
+
+            # t0 = time.time()*1000.0            
+
+            # # get smoothed matrix by gaussian filter - 0.25*Rp (Lotz)
+            # matLotzSmooth = gridAlg.gaussianFilter(noBCG, 0.25 * petroRadByEta)
+        
+            # t1 = time.time()*1000.0
+
+            # labels.append('classSmoothTime')
+            # results.append(t1-t0)
+
+            # t0 = time.time()*1000.0
+
+            # # get sky median
+            # skyMedian = gridAlg.getSkyMedian(matLotzSmooth)
+        
+            # if(saveFig):
+            #     galaxyIO.plotFITS(matLotzSmooth,"imgs/classSmoothed.fits")
+
+            # lotzS = indexes.smoothnessLotz(noBCG, matLotzSmooth, skyMedian, petroRadByEta)
+
+            # t1 = time.time()*1000.0
+
+            # labels.append('SLotzTime')
+            # results.append(t1-t0)
+
+            # labels.append("SLotz")
+            # results.append(lotzS)
+
+            # #####################################################################
+            # # Smoothness - Takamiya, 2004
+
+            # takamiyaS = indexes.smoothnessTakamiya(noBCG, matLotzSmooth, petroRadByEta)
+            # labels.append("STakam")
+            # results.append(takamiyaS)
 
         
         labels.append("Error")
