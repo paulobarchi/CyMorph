@@ -5,13 +5,14 @@ Updated and adjusted from CyMorph 1st version:
 https://github.com/rsautter/CyMorph
 
 ## Requirements
- - Python 2.7
- - MPI / MPI4py
- - Astropy
- - Numpy
+ - python 2.7
+ - mpi / mpi4py
+ - astropy
+ - numpy
  - SciPy
- - Cython
- - Mahotas
+ - cython
+ - mahotas
+ - pyfits
 
 ## Before Compiling - Create directories and download sExtractor
 
